@@ -116,16 +116,16 @@ public class CometdOperationsImpl implements CometdOperations {
     // shamelessly lifted from the controller add-on
     // see WebMvcOperationsImpl.java
     Validate.isTrue(projectOperations.isFocusedProjectAvailable(),
-            "Project metadata required");
+        "Project metadata required");
 
     // Verify that the web.xml already exists
     final String webXmlPath = pathResolver.getFocusedIdentifier(
-            Path.SRC_MAIN_WEBAPP, WEB_XML);
+        Path.SRC_MAIN_WEBAPP, WEB_XML);
     Validate.isTrue(fileManager.exists(webXmlPath), "'" + webXmlPath
         + "' does not exist");
 
     final Document document = XmlUtils.readXml(fileManager
-            .getInputStream(webXmlPath));
+        .getInputStream(webXmlPath));
 
     // now we have xml in memory, manipulate...
 
@@ -152,8 +152,32 @@ public class CometdOperationsImpl implements CometdOperations {
     filter.appendChild(getAsyncTag(document, filter));
 
     fileManager.createOrUpdateTextFileIfRequired(webXmlPath,
-                            XmlUtils.nodeToString(document), true);
-   }
+        XmlUtils.nodeToString(document), true);
+
+    List<Dependency> dependencies = new ArrayList<Dependency>();
+
+    for (Element dependencyElement : XmlUtils.findElements("/configuration/maven/dependencies/dependency", XmlUtils.getConfiguration(getClass()))) {
+      System.err.println(dependencyElement.toString());
+      dependencies.add(new Dependency(dependencyElement));
+
+    }
+
+    String moduleName = projectOperations.getFocusedModuleName();
+    projectOperations.addDependencies(moduleName, dependencies);
+
+    List<Plugin> plugins = new ArrayList<Plugin>();
+
+    for (Element pluginElement : XmlUtils.findElements("/configuration/maven/build/plugins/plugin",
+        XmlUtils.getConfiguration(getClass()))) {
+      plugins.add(new Plugin(pluginElement));
+    }
+
+    // TODO = search for existing versions of these plugins and update rather than add if already configured
+
+    projectOperations.addBuildPlugins(moduleName, plugins);
+
+    // fixup load-scripts.tagx
+  }
 
   private Element getAsyncTag(Document document, Element servlet) {
     Element asyncSupport = document.createElement("asynch-supported");
@@ -168,16 +192,16 @@ public class CometdOperationsImpl implements CometdOperations {
     // shamelessly lifted from the controller add-on
     // see WebMvcOperationsImpl.java
     Validate.isTrue(projectOperations.isFocusedProjectAvailable(),
-            "Project metadata required");
+        "Project metadata required");
 
     // Verify that the web.xml already exists
     final String webXmlPath = pathResolver.getFocusedIdentifier(
-            Path.SRC_MAIN_WEBAPP, WEB_XML);
+        Path.SRC_MAIN_WEBAPP, WEB_XML);
     Validate.isTrue(fileManager.exists(webXmlPath), "'" + webXmlPath
         + "' does not exist");
 
     final Document document = XmlUtils.readXml(fileManager
-            .getInputStream(webXmlPath));
+        .getInputStream(webXmlPath));
 
     Element documentElement = document.getDocumentElement();
 
@@ -197,28 +221,24 @@ public class CometdOperationsImpl implements CometdOperations {
 
     Element filterMapping = XmlUtils.findFirstElement("//filter-mapping/filter-name[.='cross-origin']/..", document);
     documentElement.removeChild(filterMapping);
-    
+
     fileManager.createOrUpdateTextFileIfRequired(webXmlPath,
-                                XmlUtils.nodeToString(document), true);
-
-  }
-
-  private void shite() {
-
-    // Install the add-on Google code repository needed to get the annotation
-    projectOperations.addRepository("", new Repository("Cometd Roo add-on repository", "Cometd Roo add-on repository", "https://roo-cometd-addon.googlecode.com/svn/repo"));
+        XmlUtils.nodeToString(document), true);
 
     List<Dependency> dependencies = new ArrayList<Dependency>();
 
-    // Install the dependency on the add-on jar (
-    dependencies.add(new Dependency("org.sillyweasel.rooaddons.cometd", "org.sillyweasel.rooaddons.cometd", "0.1.0.BUILD-SNAPSHOT", DependencyType.JAR, DependencyScope.PROVIDED));
-
-    // Install dependencies defined in external XML file
-    for (Element dependencyElement : XmlUtils.findElements("/configuration/batch/dependencies/dependency", XmlUtils.getConfiguration(getClass()))) {
-      dependencies.add(new Dependency(dependencyElement));
+    for (Element dependencyElement : XmlUtils.findElements("/configuration/maven/dependencies/dependency", XmlUtils.getConfiguration(getClass()))) {
+      dependencies.remove(new Dependency(dependencyElement));
     }
 
-    // Add all new dependencies to pom.xml
-    projectOperations.addDependencies("", dependencies);
+    String moduleName = projectOperations.getFocusedModuleName();
+    projectOperations.addDependencies(moduleName, dependencies);
+
+    List<Plugin> plugins = new ArrayList<Plugin>();
+
+    for (Element pluginElement : XmlUtils.findElements("/configuration/maven/build/plugins/plugin",
+        XmlUtils.getConfiguration(getClass()))) {
+      plugins.remove(new Plugin(pluginElement));
+    }
   }
 }

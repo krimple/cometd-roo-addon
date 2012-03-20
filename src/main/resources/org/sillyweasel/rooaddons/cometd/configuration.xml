@@ -2,16 +2,43 @@
 <configuration>
     <maven>
         <dependencies>
-            <!-- Ivy-style dependency definition -->
-            <dependency org="org.springframework.batch" name="spring-batch-core" rev="2.1.1.RELEASE"/>
-
-            <!-- Maven-style dependency definition (should be used if exclusions need to be defined) -->
             <dependency>
-                <groupId>org.springframework.batch</groupId>
-                <artifactId>spring-batch-admin-manager</artifactId>
-                <version>1.0.0.RELEASE</version>
+                <groupId>org.cometd.javascript</groupId>
+                <artifactId>cometd-javascript-dojo</artifactId>
+                <version>2.4.0</version>
+                <type>war</type>
             </dependency>
+
+            <dependency>
+                <groupId>org.cometd.java</groupId>
+                <artifactId>cometd-java-server</artifactId>
+                <version>2.4.0</version>
+            </dependency>
+
         </dependencies>
+        <build>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-war-plugin</artifactId>
+                    <version>2.1.1</version>
+                    <configuration>
+                        <overlays>
+                            <overlay>
+                                <groupId>org.cometd.javascript</groupId>
+                                <artifactId>cometd-javascript-dojo</artifactId>
+                                <excludes>
+                                    <exclude>META-INF/**</exclude>
+                                    <exclude>WEB-INF/**</exclude>
+                                    <exclude>build-report.txt</exclude>
+                                </excludes>
+                                <targetPath>WEB-INF/classes/frameworks/dojo-toolkit</targetPath>
+                            </overlay>
+                        </overlays>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </build>
     </maven>
     <webxml>
         <servlet>
