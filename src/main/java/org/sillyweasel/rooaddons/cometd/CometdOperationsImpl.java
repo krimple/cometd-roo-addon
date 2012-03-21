@@ -137,7 +137,8 @@ public class CometdOperationsImpl implements CometdOperations {
         "/cometd/*", 1,
         document, null,
         new WebXmlUtils.WebXmlParam("timeout", "60000"),
-        new WebXmlUtils.WebXmlParam("logLevel", "3"));
+        new WebXmlUtils.WebXmlParam("logLevel", "3"),
+        new WebXmlUtils.WebXmlParam("transports", "org.cometd.websocket.server.WebSocketTransport"));
 
     WebXmlUtils.addFilter("cross-origin", "org.eclipse.jetty.servlets.CrossOriginFilter",
         "/cometd/*", document, null);
@@ -157,7 +158,6 @@ public class CometdOperationsImpl implements CometdOperations {
     List<Dependency> dependencies = new ArrayList<Dependency>();
 
     for (Element dependencyElement : XmlUtils.findElements("/configuration/maven/dependencies/dependency", XmlUtils.getConfiguration(getClass()))) {
-      System.err.println(dependencyElement.toString());
       dependencies.add(new Dependency(dependencyElement));
 
     }
@@ -172,11 +172,17 @@ public class CometdOperationsImpl implements CometdOperations {
       plugins.add(new Plugin(pluginElement));
     }
 
-    // TODO = search for existing versions of these plugins and update rather than add if already configured
+    // search for and remove existing plugin for war plugin - should be JIRA, but Roo won't overwrite an existing one
+    // and fails silently. Should have a MUTABLE set of Maven objects, and they should allow an update of a plugin.
+    Plugin warPlugin = new Plugin("org.apache.maven.plugins", "maven-war-plugin", "2.1.1");
 
+    if (projectOperations.getFocusedModule().isPluginRegistered(warPlugin.getGAV())) {
+        projectOperations.removeBuildPlugin(moduleName, new Plugin("org.apache.maven.plugins", "maven-war-plugin", "2.1.1"));
+      projectOperations.removeBuildPlugin(moduleName, warPlugin);
+    }
+
+    // now, add back in the plugins.
     projectOperations.addBuildPlugins(moduleName, plugins);
-
-    // fixup load-scripts.tagx
   }
 
   private Element getAsyncTag(Document document, Element servlet) {
@@ -212,15 +218,24 @@ public class CometdOperationsImpl implements CometdOperations {
     Element servlet = XmlUtils.findFirstElement("//servlet-class[.='org.cometd.server.CometdServlet']/..", document);
     Element servletMapping = XmlUtils.findFirstElement("//servlet-mapping/servlet-name[.='cometd']/..", document);
 
-    documentElement.removeChild(servlet);
-    // don't do this - will not find it - document.removeChild(servletMapping);
-    documentElement.removeChild(servletMapping);
+    if (servlet != null) {
+      documentElement.removeChild(servlet);
+    }
+
+    if (servletMapping != null) {
+      documentElement.removeChild(servletMapping);
+    }
+    // note - don't do this - will not find it - document.removeChild(servletMapping);
 
     Element filter = XmlUtils.findFirstElement("//filter-class[.='org.eclipse.jetty.servlets.CrossOriginFilter']/..", document);
-    documentElement.removeChild(filter);
+    if (filter != null) {
+      documentElement.removeChild(filter);
+    }
 
     Element filterMapping = XmlUtils.findFirstElement("//filter-mapping/filter-name[.='cross-origin']/..", document);
-    documentElement.removeChild(filterMapping);
+    if (filterMapping != null) {
+      documentElement.removeChild(filterMapping);
+    }
 
     fileManager.createOrUpdateTextFileIfRequired(webXmlPath,
         XmlUtils.nodeToString(document), true);
@@ -228,6 +243,7 @@ public class CometdOperationsImpl implements CometdOperations {
     List<Dependency> dependencies = new ArrayList<Dependency>();
 
     for (Element dependencyElement : XmlUtils.findElements("/configuration/maven/dependencies/dependency", XmlUtils.getConfiguration(getClass()))) {
+      // TODO - how to guard this if dependency isn't already there??
       dependencies.remove(new Dependency(dependencyElement));
     }
 
@@ -238,6 +254,7 @@ public class CometdOperationsImpl implements CometdOperations {
 
     for (Element pluginElement : XmlUtils.findElements("/configuration/maven/build/plugins/plugin",
         XmlUtils.getConfiguration(getClass()))) {
+      // TODO - how to guard this if plugin isn't already there??
       plugins.remove(new Plugin(pluginElement));
     }
   }
